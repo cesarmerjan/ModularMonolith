@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dotenv = "==1.0.*"
+sqlalchemy = "==2.0.*"
+bcrypt = "==4.1.*"
+pydantic = "==1.10.*"
+psycopg2 = "*"
+fastapi = "*"
+click = "*"
+uvicorn = "*"
+
+[dev-packages]
+black = "*"
+isort = "*"
+pytest = "==8.2.*"
+
+[requires]
+python_version = "3.11"

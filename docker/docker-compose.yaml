@@ -1,0 +1,126 @@
+volumes:
+  main_database:
+    driver: local
+
+networks:
+  main_network: {}
+
+services:
+
+  application:
+    image: mega-services-dev:latest
+    container_name: application
+    hostname: application
+    env_file: 
+      - docker.env
+    environment:
+      DATABASE_DIALECT: "${DATABASE_DIALECT}"
+      DATABASE_DRIVER: "${DATABASE_DRIVER}"
+      DATABASE_HOST: "${DATABASE_HOST}"
+      DATABASE_PORT: "${DATABASE_PORT}"
+      DATABASE_NAME: "${DATABASE_NAME}"
+      DATABASE_USERNAME: "${DATABASE_USERNAME}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD}"
+    volumes:
+      - "../src:/srv/src:delegated"
+    networks:
+      - main_network
+    user: "1000:1000"
+
+
+  notification:
+    extends:
+      service: application
+    container_name: notification
+    hostname: notification
+    stdin_open: true
+    tty: true
+    ports:
+      - "5000:5000"
+    entrypoint: [ "/bin/bash", "-c", "./scripts/run_notification.sh" ]
+
+
+  pytest:
+    extends:
+      service: application
+    container_name: pytest
+    hostname: pytest
+    stdin_open: true
+    tty: true
+    depends_on:
+      - database
+    entrypoint: [ "python", "-m", "pytest" ]
+
+
+  bash:
+    extends:
+      service: application
+    container_name: bash
+    hostname: bash
+    stdin_open: true
+    tty: true
+    depends_on:
+      - database
+    entrypoint: [ "/bin/bash" ]
+
+
+  shell:
+    extends:
+      service: application
+    container_name: shell
+    hostname: shell
+    stdin_open: true
+    tty: true
+    depends_on:
+      - database
+    entrypoint: [ "python", "-i", "-m", "src.shell" ]
+
+
+  database:
+    image: postgres:12
+    container_name: database
+    hostname: database
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: "${DATABASE_PASSWORD}"
+      POSTGRES_DB: "${DATABASE_NAME}"
+      PGPORT: "${DATABASE_PORT}"
+    volumes:
+      - main_database:/var/lib/postgresql/data
+    networks:
+      - main_network
+    command: postgres -c log_destination=stderr -c log_statement=all
+
+  database-ui:
+    image: dpage/pgadmin4
+    container_name: database-ui
+    hostname: database-ui
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: "PgAdmin2023!"
+    ports:
+      - "5050:80"
+    depends_on:
+      - database
+    networks:
+      - main_network
+
+  database-client:
+    image: database-client-dev:latest
+    container_name: database-client
+    hostname: database-client
+    environment:
+      DATABASE_NAME: "${DATABASE_NAME}"
+      DATABASE_HOST: "${DATABASE_HOST}"
+      DATABASE_PORT: "${DATABASE_PORT}"
+      DATABASE_USERNAME: "${DATABASE_USERNAME}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD}"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - database
+    networks:
+      - main_network
+    command: ["-h", "${DATABASE_HOST}", "-p", "${DATABASE_PORT}", "-d", "${DATABASE_NAME}",  "-U", "${DATABASE_USERNAME}" ]
+
